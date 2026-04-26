@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2c3e50">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Connect Four</title>
+    <style>
+        :root {
+            --player1-color: #e74c3c;
+            --player2-color: #f1c40f;
+            --board-color: #2c3e50;
+            --bg-color: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        h1 { color: var(--board-color); margin-bottom: 10px; }
+
+        .scoreboard {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        #status {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            color: #34495e;
+        }
+
+        /* The Board */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            background-color: var(--board-color);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            aspect-ratio: 1 / 1;
+            background-color: var(--bg-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .token {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.5rem;
+            animation: drop 0.3s ease-out;
+        }
+
+        @keyframes drop {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Settings Panel */
+        #settings-panel {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #settings-panel.open { display: flex; }
+
+        .settings-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .setting-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"], select {
+            padding: 5px;
+            width: 100px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-primary { background-color: #3498db; color: white; }
+        .btn-secondary { background-color: #95a5a6; color: white; margin-top: 10px; }
+
+        /* Modal */
+        #modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            color: white;
+        }
+
+        #modal-title { font-size: 3rem; margin: 0; }
+        #modal-subtitle { font-size: 1.5rem; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>Connect 4</h1>
+    <div class="scoreboard">
+        <span id="score1">Player 1: 0</span>
+        <span id="score2">Player 2: 0</span>
+    </div>
+    <div id="status">Player 1's Turn</div>
+    <div id="board"></div>
+    <button class="btn btn-secondary" onclick="toggleSettings()">Game Settings</button>
+</div>
+
+<!-- Settings Panel -->
+<div id="settings-panel">
+    <div class="settings-content">
+        <h3>Settings</h3>
+        <div class="setting-group">
+            <label>Player 1 Name</label>
+            <input type="text" id="p1NameInput" value="Player 1">
+        </div>
+        <div class="setting-group">
+            <label>P1 Color</label>
+            <input type="color" id="p1ColorInput" value="#e74c3c">
+        </div>
+        <div class="setting-group">
+            <label>P1 Symbol</label>
+            <input type="text" id="p1SymbolInput" maxlength="1" value="X">
+        </div>
+        <hr>
+        <div class="setting-group">
+            <label>Player 2 Name</label>
+            <input type="text" id="p2NameInput" value="Player 2">
+        </div>
+        <div class="setting-group">
+            <label>P2 Color</label>
+            <input type="color" id="p2ColorInput" value="#f1c40f">
+        </div>
+        <div class="setting-group">
+            <label>P2 Symbol</label>
+            <input type="text" id="p2SymbolInput" maxlength="1" value="O">
+        </div>
+        <hr>
+        <div class="setting-group">
+            <label>Board Color</label>
+            <input type="color" id="boardColorInput" value="#2c3e50">
+        </div>
+        <div class="setting-group">
+            <label>Background Color</label>
+            <input type="color" id="bgColorInput" value="#ecf0f1">
+        </div>
+        <hr>
+        <div class="setting-group">
+            <label>Win Limit</label>
+            <select id="gameModeSelect">
+                <option value="1">First to 1</option>
+                <option value="2" selected>First to 2</option>
+                <option value="3">First to 3</option>
+            </select>
+        </div>
+        <div class="setting-group">
+            <label>Opponent</label>
+            <select id="opponentSelect">
+                <option value="pvp">Player vs Player</option>
+                <option value="pva" selected>Player vs AI</option>
+            </select>
+        </div>
+        <div class="setting-group">
+            <label>Sound Style</label>
+            <select id="soundSelect">
+                <option value="classic">Classic (Sine)</option>
+                <option value="arcade">Arcade (Square)</option>
+                <option value="lofi">Lo-Fi (Smooth)</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="applySettings()">Apply & Restart</button>
+        <button class="btn btn-secondary" style="width:100%" onclick="toggleSettings()">Close</button>
+    </div>
+</div>
+
+<!-- Winner Modal -->
+<div id="modal-overlay" onclick="closeModal()">
+    <h1 id="modal-title">Winner!</h1>
+    <p id="modal-subtitle">Final Score: 0 - 0</p>
+    <button class="btn btn-primary" onclick="closeModal()">Play Again</button>
+</div>
+
+<script>
+// --- CONSTANTS & CONFIG ---
+const ROWS = 6;
+const COLS = 7;
+let config = {
+    p1Name: "Player 1", p1Color: "#e74c3c", p1Symbol: "X",
+    p2Name: "Player 2", p2Color: "#f1c40f", p2Symbol: "O",
+    boardColor: "#2c3e50", bgColor: "#ecf0f1",
+    opponent: 'pva', soundStyle: 'classic'
+};
+
+let gameState = {
+    board: [], isGameOver: false, currentPlayer: 1,
+    isThinking: false, winLimit: 2, p1Score: 0, p2Score: 0
+};
+
+const boardElement = document.getElementById('board');
+const statusElement = document.getElementById('status');
+
+// --- AUDIO ENGINE ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const soundLibrary = {
+    classic: { drop: [400, 200], win: [600, 900], draw: [300, 150] },
+    arcade: { drop: [200, 50], win: [400, 1200], draw: [150, 50] },
+    lofi: { drop: [300, 250], win: [500, 700], draw: [200, 200] }
+};
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const profile = soundLibrary[config.soundStyle] || soundLibrary.classic;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); 
+    gain.connect(audioCtx.destination);
+
+    if (type === 'drop') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(profile.drop[0], audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(profile.drop[1], audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, audioCtx.quitime = audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+    } else if (type === 'win') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(profile.win[0], audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(profile.win[1], audioCtx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+    } else if (type === 'draw') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(profile.draw[0], audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(profile.draw[1], audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+    }
+    osc.start(); 
+    osc.stop(audioCtx.currentTime + 0.5);
+}
+
+// --- CORE LOGIC ---
+function initGame() {
+    gameState.board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+    gameState.isGameOver = false;
+    gameState.currentPlayer = 1;
+    gameState.isThinking = false;
+    const modeVal = parseInt(document.getElementById('gameModeSelect').value);
+    gameState.winLimit = modeVal;
+    statusElement.textContent = `${config.p1Name}'s Turn`;
+    renderBoard();
+}
+
+function toggleSettings() {
+    document.getElementById('settings-panel').classList.toggle('open');
+}
+
+function applySettings() {
+    config.p1Name = document.getElementById('p1NameInput').value;
+    config.p1Color = document.getElementById('p1ColorInput').value;
+    config.p1Symbol = document.getElementById('p1SymbolInput').value || "X";
+    config.p2Name = document.getElementById('p2NameInput').value;
+    config.p2Color = document.getElementById('p2ColorInput').value;
+    config.p2Symbol = document.getElementById('p2SymbolInput').value || "O";
+    config.boardColor = document.getElementById('boardColorInput').value;
+    config.bgColor = document.getElementById('bgColorInput').value;
+    config.opponent = document.getElementById('opponentSelect').value;
+    config.soundStyle = document.getElementById('soundSelect').value;
+
+    gameState.p1Score = 0;
+    gameState.p2Score = 0;
+    updateScoreboard();
+
+    document.documentElement.style.setProperty('--player1-color', config.p1Color);
+    document.documentElement.style.setProperty('--player2-color', config.p2Color);
+    document.documentElement.style.setProperty('--board-color', config.boardColor);
+    document.documentElement.style.setProperty('--bg-color', config.bgColor);
+
+    toggleSettings();
+    initGame();
+}
+
+function renderBoard() {
+    boardElement.innerHTML = '';
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.onclick = () => handleMove(c);
+            boardElement.appendChild(cell);
+        }
+    }
+}
+
+function handleMove(col) {
+    if (gameState.isGameOver || gameState.isThinking) return;
+    if (config.opponent === 'pva' && gameState.currentPlayer === 2) return;
+    executeMove(col);
+}
+
+function executeMove(col) {
+    const row = getAvailableRow(col);
+    if (row === -1) return;
+
+    gameState.board[row][col] = gameState.currentPlayer;
+    playSound('drop');
+    updateVisuals();
+
+    if (checkWin(row, col, gameState.currentPlayer)) {
+        handleRoundEnd(gameState.currentPlayer);
+    } else if (checkDraw()) {
+        handleRoundEnd(0);
+    } else {
+        gameState.currentPlayer = gameState.currentPlayer === 1 ? 2 : 1;
+        statusElement.textContent = `${gameState.currentPlayer === 1 ? config.p1Name : config.p2Name}'s Turn`;
+        
+        if (config.opponent === 'pva' && gameState.currentPlayer === 2) {
+            gameState.isThinking = true;
+            statusElement.textContent = "AI is thinking..."; 
+            setTimeout(makeAIMove, 800); 
+        }
+    }
+}
+
+function getAvailableRow(col) {
+    for (let r = ROWS - 1; r >= 0; r--) {
+        if (gameState.board[r][col] === 0) return r;
+    }
+    return -1;
+}
+
+function updateVisuals() {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach((cell, index) => {
+        const r = Math.floor(index / COLS);
+        const c = index % COLS;
+        cell.innerHTML = ''; 
+        if (gameState.board[r][c] !== 0) {
+            const token = document.createElement('div');
+            token.classList.add('token');
+            token.style.backgroundColor = gameState.board[r][c] === 1 ? config.p1Color : config.p2Color;
+            token.textContent = gameState.board[r][c] === 1 ? config.p1Symbol : config.p2Symbol;
+            cell.appendChild(token);
+        }
+    });
+}
+
+function checkWin(r, c, p) {
+    const dirs = [[0,1], [1,0], [1,1], [1,-1]];
+    for (let [dr, dc] of dirs) {
+        let count = 1;
+        count += countInDir(r, c, dr, dc, p);
+        count += countInDir(r, c, -dr, -dc, p);
+        if (count >= 4) return true;
+    }
+    return false;
+}
+
+function countInDir(r, c, dr, dc, p) {
+    let count = 0;
+    let nr = r + dr; let nc = c + dc;
+    while (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && gameState.board[nr][nc] === p) {
+        count++; nr += dr; nc += dc;
+    }
+    return count;
+}
+
+function checkDraw() {
+    return gameState.board.every(row => row.every(cell => cell !== 0));
+}
+
+function handleRoundEnd(winner) {
+    gameState.isGameOver = true;
+    gameState.isThinking = false; 
+    if (winner === 1) {
+        gameState.p1Score++;
+        statusElement.textContent = `${config.p1Name} wins!`;
+        playSound('win');
+    } else if (winner === 2) {
+        gameState.p2Score++;
+        statusElement.textContent = `${config.p2Name} wins!`;
+        playSound('win');
+    } else {
+        statusElement.textContent = "Draw!";
+        playSound('draw');
+    }
+    updateScoreboard();
+    setTimeout(() => {
+        if (gameState.p1Score === gameState.winLimit || gameState.p2Score === gameState.winLimit) {
+            showMatchWinner();
+        } else {
+            initGame();
+        }
+    }, 2000);
+}
+
+function updateScoreboard() {
+    document.getElementById('score1').textContent = `${config.p1Name}: ${gameState.p1Score}`;
+    document.getElementById('score2').textContent = `${config.p2Name}: ${gameState.p2Score}`;
+}
+
+function showMatchWinner() {
+    const modal = document.getElementById('modal-overlay');
+    const title = document.getElementById('modal-title');
+    const sub = document.getElementById('modal-subtitle');
+    modal.style.display = 'flex';
+    if (gameState.p1Score > gameState.p2Score) {
+        title.textContent = `🏆 ${config.p1Name} Wins!`;
+    } else {
+        title.textContent = `🏆 ${config.p2Name} Wins!`;
+    }
+    sub.textContent = `Final Score: ${gameState.p1Score} - ${gameState.p2Score}`;
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').style.display = 'none';
+    gameState.p1Score = 0;
+    gameState.p2Score = 0;
+    initGame();
+}
+
+// --- AI LOGIC (Minimax) ---
+function makeAIMove() {
+    gameState.isThinking = false; 
+    let validMoves = [];
+    for (let c = 0; c < COLS; c++) {
+        if (getAvailableRow(c) !== -1) validMoves.push(c);
+    }
+
+    // 1. Win move
+    for (let c of validMoves) {
+        let r = getAvailableRow(c);
+        gameState.board[r][c] = 2;
+        if (checkWin(r, c, 2)) {
+            gameState.board[r][c] = 0;
+            executeMove(c);
+            return;
+        }
+        gameState.board[r][c] = 0;
+    }
+
+    // 2. Block human move
+    for (let c of validMoves) {
+        let r = getAvailableRow(c);
+        gameState.board[r][c] = 1;
+        if (checkWin(r, c, 1)) {
+            gameState.board[r][c] = 0;
+            executeMove(c);
+            return;
+        }
+        gameState.board[r][c] = 0;
+    }
+
+    // 3. Strategic move (Minimax)
+    let bestScore = -Infinity;
+    let finalMove = validMoves[0];
+    for (let c of validMoves) {
+        let r = getAvailableRow(c);
+        gameState.board[r][c] = 2;
+        let score = minimax(4, false, gameState.board); 
+        gameState.board[r][c] = 0;
+        if (score > bestScore) {
+            bestScore = score;
+            finalMove = c;
+        }
+    }
+    executeMove(finalMove);
+}
+
+function minimax(depth, isMaximizing, board) {
+    if (depth === 0) return evaluateBoard(board);
+
+    if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let c = 0; c < COLS; c++) {
+            let r = getAvailableRow(c);
+            if (r !== -1) {
+                board[r][c] = 2;
+                maxEval = Math.max(maxEval, minimax(depth - 1, false, board));
+                board[r][c] = 0;
+            }
+        }
+        return maxEval;
+    } else {
+        let minEval = Infinity;
+        for (let c = 0; c < COLS; c++) {
+            let r = getAvailableRow(c);
+            if (r !== -1) {
+                board[r][c] = 1;
+                minEval = Math.min(minEval, minimax(depth - 1, true, board));
+                board[r][c] = 0;
+            }
+        }
+        return minEval;
+    }
+}
+
+function evaluateBoard(board) {
+    let score = 0;
+    const evaluateWindow = (window) => {
+        let aiCount = window.filter(x => x === 2).length;
+        let humanCount = window.filter(x => x === 1).length;
+        let emptyCount = window.filter(x => x === 0).length;
+
+        if (aiCount === 4) return 1000;
+        if (humanCount === 4) return -1000;
+        if (aiCount === 3 && emptyCount === 1) return 50;
+        if (humanCount === 3 && emptyCount === 1) return -50;
+        return 0;
+    };
+
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            if (c <= COLS - 4) score += evaluateWindow([board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]]);
+            if (r <= ROWS - 4) score += evaluateWindow([board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]]);
+            if (r <= ROWS - 4 && c <= COLS - 4) score += evaluateWindow([board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]]);
+            if (r >= 3 && c <= COLS - 4) score += evaluateWindow([board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]]);
+        }
+    }
+    return score;
+}
+
+initGame();
+// Register Service Worker for Offline Play
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker Registered'))
+            .catch(err => console.log('Service Worker Failed', err));
+    });
+}
+
+</script>
+</body>
+</html>
